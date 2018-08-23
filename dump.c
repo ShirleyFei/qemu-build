@@ -1928,6 +1928,7 @@ void qmp_dump_guest_memory(bool paging, const char *file,
     DumpState *s;
     Error *local_err = NULL;
     bool detach_p = false;
+    int err = 0;
 
     if (runstate_check(RUN_STATE_INMIGRATE)) {
         error_setg(errp, "Dump not allowed during incoming migration.");
@@ -2021,8 +2022,13 @@ void qmp_dump_guest_memory(bool paging, const char *file,
     if (detach_p) {
         /* detached dump */
         s->detached = true;
-        qemu_thread_create(&s->dump_thread, "dump_thread", dump_thread,
-                           s, QEMU_THREAD_DETACHED);
+        err = qemu_thread_create(&s->dump_thread, "dump_thread", dump_thread,
+                                 s, QEMU_THREAD_DETACHED);
+        if (err) {
+            fprintf(stderr, "Failed in %s() when calls "
+                    "qemu_thread_create(): %s\n", __func__, strerror(err));
+            abort();
+        }
     } else {
         /* sync dump */
         dump_process(s, errp);

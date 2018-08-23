@@ -504,18 +504,24 @@ static void *qemu_thread_start(void *args)
     return start_routine(arg);
 }
 
-void qemu_thread_create(QemuThread *thread, const char *name,
+int qemu_thread_create(QemuThread *thread, const char *name,
                        void *(*start_routine)(void*),
                        void *arg, int mode)
 {
     sigset_t set, oldset;
-    int err;
+    int err = 0;
     pthread_attr_t attr;
     QemuThreadArgs *qemu_thread_args;
 
     err = pthread_attr_init(&attr);
+    err = EPERM;
+    /*
+     * EINVAL -- qemu: qemu_thread_create: Invalid argument
+     * EPERM -- qemu: qemu_thread_create: Operation not permitted
+     * EAGAIN -- Failed when qemu_kvm_start_vcpu calls qemu_thread_create: Resource temporarily unavailable
+     */
     if (err) {
-        error_exit(err, __func__);
+        goto out;
     }
 
     if (mode == QEMU_THREAD_DETACHED) {
@@ -534,12 +540,15 @@ void qemu_thread_create(QemuThread *thread, const char *name,
     err = pthread_create(&thread->thread, &attr,
                          qemu_thread_start, qemu_thread_args);
 
-    if (err)
-        error_exit(err, __func__);
+    if (err) {
+        goto out;
+    }
 
     pthread_sigmask(SIG_SETMASK, &oldset, NULL);
 
     pthread_attr_destroy(&attr);
+out:
+    return err;
 }
 
 void qemu_thread_get_self(QemuThread *thread)

@@ -1066,6 +1066,8 @@ retry:
 
 int postcopy_ram_enable_notify(MigrationIncomingState *mis)
 {
+    int err = 0;
+
     /* Open the fd for the kernel to give us userfaults */
     mis->userfault_fd = syscall(__NR_userfaultfd, O_CLOEXEC | O_NONBLOCK);
     if (mis->userfault_fd == -1) {
@@ -1092,8 +1094,14 @@ int postcopy_ram_enable_notify(MigrationIncomingState *mis)
     }
 
     qemu_sem_init(&mis->fault_thread_sem, 0);
-    qemu_thread_create(&mis->fault_thread, "postcopy/fault",
-                       postcopy_ram_fault_thread, mis, QEMU_THREAD_JOINABLE);
+    err = qemu_thread_create(&mis->fault_thread, "postcopy/fault",
+                             postcopy_ram_fault_thread, mis,
+                             QEMU_THREAD_JOINABLE);
+    if (err) {
+        fprintf(stderr, "Failed in %s() when calls "
+                "qemu_thread_create(): %s\n", __func__, strerror(err));
+        abort();
+    }
     qemu_sem_wait(&mis->fault_thread_sem);
     qemu_sem_destroy(&mis->fault_thread_sem);
     mis->have_fault_thread = true;

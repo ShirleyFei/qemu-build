@@ -1685,6 +1685,7 @@ static int loadvm_postcopy_handle_listen(MigrationIncomingState *mis)
     PostcopyState ps = postcopy_state_set(POSTCOPY_INCOMING_LISTENING);
     trace_loadvm_postcopy_handle_listen();
     Error *local_err = NULL;
+    int err = 0;
 
     if (ps != POSTCOPY_INCOMING_ADVISE && ps != POSTCOPY_INCOMING_DISCARD) {
         error_report("CMD_POSTCOPY_LISTEN in wrong postcopy state (%d)", ps);
@@ -1724,9 +1725,14 @@ static int loadvm_postcopy_handle_listen(MigrationIncomingState *mis)
     mis->have_listen_thread = true;
     /* Start up the listening thread and wait for it to signal ready */
     qemu_sem_init(&mis->listen_thread_sem, 0);
-    qemu_thread_create(&mis->listen_thread, "postcopy/listen",
-                       postcopy_ram_listen_thread, NULL,
-                       QEMU_THREAD_DETACHED);
+    err = qemu_thread_create(&mis->listen_thread, "postcopy/listen",
+                             postcopy_ram_listen_thread, NULL,
+                             QEMU_THREAD_DETACHED);
+    if (err) {
+        fprintf(stderr, "Failed in %s() when calls "
+                "qemu_thread_create(): %s\n", __func__, strerror(err));
+        abort();
+    }
     qemu_sem_wait(&mis->listen_thread_sem);
     qemu_sem_destroy(&mis->listen_thread_sem);
 

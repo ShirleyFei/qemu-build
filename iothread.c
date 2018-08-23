@@ -144,6 +144,7 @@ static void iothread_complete(UserCreatable *obj, Error **errp)
     Error *local_error = NULL;
     IOThread *iothread = IOTHREAD(obj);
     char *name, *thread_name;
+    int err = 0;
 
     iothread->stopping = false;
     iothread->running = true;
@@ -175,10 +176,15 @@ static void iothread_complete(UserCreatable *obj, Error **errp)
      */
     name = object_get_canonical_path_component(OBJECT(obj));
     thread_name = g_strdup_printf("IO %s", name);
-    qemu_thread_create(&iothread->thread, thread_name, iothread_run,
-                       iothread, QEMU_THREAD_JOINABLE);
+    err = qemu_thread_create(&iothread->thread, thread_name, iothread_run,
+                             iothread, QEMU_THREAD_JOINABLE);
     g_free(thread_name);
     g_free(name);
+    if (err) {
+        fprintf(stderr, "Failed in %s() when calls "
+                "qemu_thread_create(): %s\n", __func__, strerror(err));
+        abort();
+    }
 
     /* Wait for initialization to complete */
     qemu_mutex_lock(&iothread->init_done_lock);

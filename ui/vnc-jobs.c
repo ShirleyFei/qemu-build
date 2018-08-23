@@ -31,6 +31,7 @@
 #include "vnc-jobs.h"
 #include "qemu/sockets.h"
 #include "qemu/main-loop.h"
+#include "qapi/error.h"
 #include "block/aio.h"
 
 /*
@@ -333,12 +334,18 @@ static bool vnc_worker_thread_running(void)
 void vnc_start_worker_thread(void)
 {
     VncJobQueue *q;
+    int err = 0;
 
     if (vnc_worker_thread_running())
         return ;
 
     q = vnc_queue_init();
-    qemu_thread_create(&q->thread, "vnc_worker", vnc_worker_thread, q,
-                       QEMU_THREAD_DETACHED);
+    err = qemu_thread_create(&q->thread, "vnc_worker", vnc_worker_thread, q,
+                             QEMU_THREAD_DETACHED);
+    if (err) {
+        fprintf(stderr, "Failed in %s() when calls "
+                "qemu_thread_create(): %s\n", __func__, strerror(err));
+        abort();
+    }
     queue = q; /* Set global queue */
 }

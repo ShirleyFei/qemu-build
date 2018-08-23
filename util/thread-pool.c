@@ -19,6 +19,7 @@
 #include "qemu/queue.h"
 #include "qemu/thread.h"
 #include "qemu/coroutine.h"
+#include "qapi/error.h"
 #include "trace.h"
 #include "block/thread-pool.h"
 #include "qemu/main-loop.h"
@@ -123,6 +124,7 @@ static void *worker_thread(void *opaque)
 static void do_spawn_thread(ThreadPool *pool)
 {
     QemuThread t;
+    int err = 0;
 
     /* Runs with lock taken.  */
     if (!pool->new_threads) {
@@ -132,7 +134,13 @@ static void do_spawn_thread(ThreadPool *pool)
     pool->new_threads--;
     pool->pending_threads++;
 
-    qemu_thread_create(&t, "worker", worker_thread, pool, QEMU_THREAD_DETACHED);
+    err = qemu_thread_create(&t, "worker", worker_thread, pool,
+                             QEMU_THREAD_DETACHED);
+    if (err) {
+        fprintf(stderr, "Failed in %s() when calls "
+                "qemu_thread_create(): %s\n", __func__, strerror(err));
+        abort();
+    }
 }
 
 static void spawn_thread_bh_fn(void *opaque)
