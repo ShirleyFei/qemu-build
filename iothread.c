@@ -176,9 +176,19 @@ static void iothread_complete(UserCreatable *obj, Error **errp)
     name = object_get_canonical_path_component(OBJECT(obj));
     thread_name = g_strdup_printf("IO %s", name);
     qemu_thread_create(&iothread->thread, thread_name, iothread_run,
-                       iothread, QEMU_THREAD_JOINABLE);
+                       iothread, QEMU_THREAD_JOINABLE, &local_error);
     g_free(thread_name);
     g_free(name);
+    if (errp) {
+        /* !!Here is a question!!
+         * The final caller set errp=error_abort, so propagate.
+         * But maybe abort() here is more direct and err_msg more obvious?
+         */
+        error_propagate(errp, local_error);
+        aio_context_unref(iothread->ctx);
+        iothread->ctx = NULL;
+        return;
+    }
 
     /* Wait for initialization to complete */
     qemu_mutex_lock(&iothread->init_done_lock);

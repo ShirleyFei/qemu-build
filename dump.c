@@ -2022,7 +2022,12 @@ void qmp_dump_guest_memory(bool paging, const char *file,
         /* detached dump */
         s->detached = true;
         qemu_thread_create(&s->dump_thread, "dump_thread", dump_thread,
-                           s, QEMU_THREAD_DETACHED);
+                           s, QEMU_THREAD_DETACHED, &local_err);
+        if (local_err) {
+            error_reportf_err(local_err, "Failed in %s() when calls "
+                              "qemu_thread_create(): \n", __func__);
+            abort();
+        }
     } else {
         /* sync dump */
         dump_process(s, errp);

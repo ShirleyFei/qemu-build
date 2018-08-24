@@ -16,6 +16,7 @@
 #include "qemu/osdep.h"
 #include "qemu-common.h"
 #include "qemu/thread.h"
+#include "qapi/error.h"
 
 #include <sys/syscall.h>
 
@@ -70,6 +71,7 @@ static int qemu_signalfd_compat(const sigset_t *mask)
     struct sigfd_compat_info *info;
     QemuThread thread;
     int fds[2];
+    Error *errp = NULL;
 
     info = malloc(sizeof(*info));
     if (info == NULL) {
@@ -89,7 +91,11 @@ static int qemu_signalfd_compat(const sigset_t *mask)
     info->fd = fds[1];
 
     qemu_thread_create(&thread, "signalfd_compat", sigwait_compat, info,
-                       QEMU_THREAD_DETACHED);
+                       QEMU_THREAD_DETACHED, &errp);
+    if (errp) {
+        error_reportf_err(errp, "Failed in %s() when calls "
+                         "qemu_thread_create(): \n", __func__);
+    }
 
     return fds[0];
 }

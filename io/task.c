@@ -132,6 +132,7 @@ void qio_task_run_in_thread(QIOTask *task,
                             GMainContext *context)
 {
     struct QIOTaskThreadData *data = g_new0(struct QIOTaskThreadData, 1);
+    Error *errp = NULL;
     QemuThread thread;
 
     if (context) {
@@ -149,7 +150,13 @@ void qio_task_run_in_thread(QIOTask *task,
                        "io-task-worker",
                        qio_task_thread_worker,
                        data,
-                       QEMU_THREAD_DETACHED);
+                       QEMU_THREAD_DETACHED,
+                       &errp);
+    if (errp) {
+        error_reportf_err(errp, "Failed in %s() when calls "
+                          "qemu_thread_create(): \n", __func__);
+        abort();
+    }
 }
 
 

@@ -14,6 +14,7 @@
 #include "qemu/thread.h"
 #include "qemu/atomic.h"
 #include "qemu/notify.h"
+#include "qapi/error.h"
 #include "qemu-thread-common.h"
 
 static bool name_threads;
@@ -506,16 +507,23 @@ static void *qemu_thread_start(void *args)
 
 void qemu_thread_create(QemuThread *thread, const char *name,
                        void *(*start_routine)(void*),
-                       void *arg, int mode)
+                       void *arg, int mode, Error **errp)
 {
     sigset_t set, oldset;
-    int err;
+    int ret;
     pthread_attr_t attr;
     QemuThreadArgs *qemu_thread_args;
+    Error *local_err = NULL;
 
-    err = pthread_attr_init(&attr);
-    if (err) {
-        error_exit(err, __func__);
+    ret = pthread_attr_init(&attr);
+    ret = EPERM;
+    /*
+     * EINVAL -- qemu: qemu_thread_create: Invalid argument
+     * EPERM -- qemu: qemu_thread_create: Operation not permitted
+     * EAGAIN -- Failed when qemu_kvm_start_vcpu calls qemu_thread_create: Resource temporarily unavailable
+     */
+    if (ret) {
+        goto fail;
     }
 
     if (mode == QEMU_THREAD_DETACHED) {
@@ -531,15 +539,20 @@ void qemu_thread_create(QemuThread *thread, const char *name,
     qemu_thread_args->start_routine = start_routine;
     qemu_thread_args->arg = arg;
 
-    err = pthread_create(&thread->thread, &attr,
+    ret = pthread_create(&thread->thread, &attr,
                          qemu_thread_start, qemu_thread_args);
 
-    if (err)
-        error_exit(err, __func__);
+    if (ret) {
+        goto fail;
+    }
 
     pthread_sigmask(SIG_SETMASK, &oldset, NULL);
 
     pthread_attr_destroy(&attr);
+    return;
+fail:
+    error_setg(&local_err, "%s", strerror(ret));
+    error_propagate(errp, local_err);
 }
 
 void qemu_thread_get_self(QemuThread *thread)

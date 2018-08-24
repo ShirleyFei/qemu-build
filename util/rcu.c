@@ -32,6 +32,7 @@
 #include "qemu/atomic.h"
 #include "qemu/thread.h"
 #include "qemu/main-loop.h"
+#include "qapi/error.h"
 #if defined(CONFIG_MALLOC_TRIM)
 #include <malloc.h>
 #endif
@@ -314,6 +315,7 @@ void rcu_unregister_thread(void)
 static void rcu_init_complete(void)
 {
     QemuThread thread;
+    Error *errp = NULL;
 
     qemu_mutex_init(&rcu_registry_lock);
     qemu_mutex_init(&rcu_sync_lock);
@@ -325,7 +327,12 @@ static void rcu_init_complete(void)
      * must have been quiescent even after forking, just recreate it.
      */
     qemu_thread_create(&thread, "call_rcu", call_rcu_thread,
-                       NULL, QEMU_THREAD_DETACHED);
+                       NULL, QEMU_THREAD_DETACHED, &errp);
+    if (errp) {
+        error_reportf_err(errp, "Failed in %s() when calls "
+                          "qemu_thread_create(): \n", __func__);
+        abort();
+    }
 
     rcu_register_thread();
 }

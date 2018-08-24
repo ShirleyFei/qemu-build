@@ -362,6 +362,7 @@ static bool touch_all_pages(char *area, size_t hpagesize, size_t numpages,
 {
     size_t numpages_per_thread;
     size_t size_per_thread;
+    Error *errp = NULL;
     char *addr = area;
     int i = 0;
 
@@ -377,7 +378,12 @@ static bool touch_all_pages(char *area, size_t hpagesize, size_t numpages,
         memset_thread[i].hpagesize = hpagesize;
         qemu_thread_create(&memset_thread[i].pgthread, "touch_pages",
                            do_touch_pages, &memset_thread[i],
-                           QEMU_THREAD_JOINABLE);
+                           QEMU_THREAD_JOINABLE, &errp);
+        if (errp) {
+            error_reportf_err(errp, "Failed in %s() when calls "
+                              "qemu_thread_create(): \n", __func__);
+            abort();
+        }
         addr += size_per_thread;
         numpages -= numpages_per_thread;
     }
