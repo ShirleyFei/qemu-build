@@ -792,7 +792,7 @@ static void char_socket_server_test(gconstpointer opaque)
      */
     qemu_thread_create(&thread, "client",
                        char_socket_server_client_thread,
-                       addr, QEMU_THREAD_JOINABLE);
+                       addr, QEMU_THREAD_JOINABLE, &error_abort);
     g_assert(data.event == -1);
 
     if (config->wait_connected) {
