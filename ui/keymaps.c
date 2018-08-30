@@ -81,7 +81,7 @@ static void add_keysym(char *line, int keysym, int keycode, kbd_layout_t *k)
 
 static kbd_layout_t *parse_keyboard_layout(const name2keysym_t *table,
                                            const char *language,
-                                           kbd_layout_t *k)
+                                           kbd_layout_t *k, Error **errp)
 {
     FILE *f;
     char * filename;
@@ -94,7 +94,7 @@ static kbd_layout_t *parse_keyboard_layout(const name2keysym_t *table,
     f = filename ? fopen(filename, "r") : NULL;
     g_free(filename);
     if (!f) {
-        fprintf(stderr, "Could not read keymap file: '%s'\n", language);
+        error_setg(errp, "could not read keymap file: '%s'\n", language);
         return NULL;
     }
 
