@@ -5112,7 +5112,7 @@ static void x86_cpu_realizefn(DeviceState *dev, Error **errp)
     }
 #endif
 
-    qemu_init_vcpu(cs, &local_err);
+    qemu_init_vcpu(cs, &error_abort);
     if (local_err) {
         error_propagate(errp, local_err);
         return;

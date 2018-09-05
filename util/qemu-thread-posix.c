@@ -509,13 +509,17 @@ void qemu_thread_create(QemuThread *thread, const char *name,
                        void *(*start_routine)(void*),
                        void *arg, int mode, Error **errp)
 {
+static int i = 0;
     sigset_t set, oldset;
     int err;
     pthread_attr_t attr;
     QemuThreadArgs *qemu_thread_args;
-    Error *local_err = NULL;
+//    Error *local_err = NULL;
 
     err = pthread_attr_init(&attr);
+if(i == 3) {    
+    err = EPERM;
+}
     if (err) {
         goto fail;
     }
@@ -543,10 +547,11 @@ void qemu_thread_create(QemuThread *thread, const char *name,
     pthread_sigmask(SIG_SETMASK, &oldset, NULL);
 
     pthread_attr_destroy(&attr);
+i++;
     return;
 fail:
-    error_setg(&local_err, "%s", strerror(err));
-    error_propagate(errp, local_err);
+    error_setg(errp, "%s", strerror(err));
+    //error_propagate(errp, local_err);
 }
 
 void qemu_thread_get_self(QemuThread *thread)

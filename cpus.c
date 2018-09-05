@@ -1996,7 +1996,7 @@ static void qemu_kvm_start_vcpu(CPUState *cpu, Error **errp)
     snprintf(thread_name, VCPU_THREAD_NAME_SIZE, "CPU %d/KVM",
              cpu->cpu_index);
     qemu_thread_create(cpu->thread, thread_name, qemu_kvm_cpu_thread_fn,
-                       cpu, QEMU_THREAD_JOINABLE, &local_err);
+                       cpu, QEMU_THREAD_JOINABLE, errp);
     if (local_err) {
         error_propagate(errp, local_err);
         return;
@@ -2081,7 +2081,7 @@ void qemu_init_vcpu(CPUState *cpu, Error **errp)
     }
 
     if (kvm_enabled()) {
-        qemu_kvm_start_vcpu(cpu, &local_err);
+        qemu_kvm_start_vcpu(cpu, errp);
     } else if (hax_enabled()) {
         qemu_hax_start_vcpu(cpu, &local_err);
     } else if (hvf_enabled()) {
