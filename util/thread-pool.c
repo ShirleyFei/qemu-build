@@ -134,7 +134,7 @@ static void do_spawn_thread(ThreadPool *pool)
     pool->pending_threads++;
 
     qemu_thread_create(&t, "worker", worker_thread, pool,
-                       QEMU_THREAD_DETACHED, &error_abort);
+                       QEMU_THREAD_DETACHED, NULL);
 }
 
 static void spawn_thread_bh_fn(void *opaque)

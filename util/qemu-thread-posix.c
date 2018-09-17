@@ -515,6 +515,10 @@ bool qemu_thread_create(QemuThread *thread, const char *name,
     QemuThreadArgs *qemu_thread_args;
 
     err = pthread_attr_init(&attr);
+static int i=0;
+if (i==16) {
+err=EPERM;
+}
     if (err) {
         goto fail;
     }
@@ -540,7 +544,7 @@ bool qemu_thread_create(QemuThread *thread, const char *name,
     }
 
     pthread_sigmask(SIG_SETMASK, &oldset, NULL);
-
+i++;
     pthread_attr_destroy(&attr);
     return true;
 fail:
