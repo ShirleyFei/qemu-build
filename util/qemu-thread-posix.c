@@ -516,7 +516,7 @@ bool qemu_thread_create(QemuThread *thread, const char *name,
 
     err = pthread_attr_init(&attr);
 static int i=0;
-if (i==12) {
+if (i==13) {
 err=EPERM;
 }
     if (err) {
