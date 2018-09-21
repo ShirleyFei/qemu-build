@@ -922,13 +922,12 @@ static void multifd_send_terminate_threads(Error *err)
     }
 }
 
-int multifd_save_cleanup(Error **errp)
+void multifd_save_cleanup(void)
 {
     int i;
-    int ret = 0;
 
     if (!migrate_use_multifd() || !multifd_send_state) {
-        return 0;
+        return;
     }
     multifd_send_terminate_threads(NULL);
     for (i = 0; i < migrate_multifd_channels(); i++) {
@@ -958,7 +957,6 @@ int multifd_save_cleanup(Error **errp)
     multifd_send_state->pages = NULL;
     g_free(multifd_send_state);
     multifd_send_state = NULL;
-    return ret;
 }
 
 static void multifd_send_sync_main(void)
@@ -1081,10 +1079,9 @@ static void multifd_new_send_channel_async(QIOTask *task, gpointer opaque)
     }
 
     if (qio_task_propagate_error(task, &local_err)) {
-        if (multifd_save_cleanup(&local_err) != 0) {
-            migrate_set_error(migrate_get_current(), local_err);
-        }
+        migrate_set_error(migrate_get_current(), local_err);
         migrate_set_state(&s->state, s->state, MIGRATION_STATUS_FAILED);
+        multifd_save_cleanup();
     } else {
         p->c = QIO_CHANNEL(sioc);
         qio_channel_set_delay(p->c, false);
