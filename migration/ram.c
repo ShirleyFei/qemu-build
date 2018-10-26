@@ -939,7 +939,7 @@ int multifd_save_cleanup(void)
         MultiFDSendParams *p = &multifd_send_state->params[i];
 
         if (p->running) {
-            qemu_thread_join(&p->thread);
+            //qemu_thread_join(&p->thread);
         }
         socket_send_channel_destroy(p->c);
         p->c = NULL;
@@ -1100,6 +1100,19 @@ static void multifd_new_send_channel_async(QIOTask *task, gpointer opaque)
             migrate_set_state(&s->state, s->state, MIGRATION_STATUS_FAILED);
             migrate_set_error(migrate_get_current(), local_err);
             multifd_save_cleanup();
+        assert(s->to_dst_file);
+        qemu_mutex_lock(&s->qemu_file_lock);
+        QEMUFile *file = s->to_dst_file;
+        s->to_dst_file = NULL;
+        qemu_mutex_unlock(&s->qemu_file_lock);
+        qemu_fclose(file);
+
+/*
+        if (s->to_dst_file) {
+            qemu_fclose(s->to_dst_file);
+            s->to_dst_file = NULL;
+        }
+*/
             //migrate_fd_cleanup();
             return;
         }
