@@ -969,7 +969,7 @@ static void multifd_send_sync_main(void)
 {
     int i;
 
-    if (!migrate_use_multifd()) {
+    if (!migrate_use_multifd() || !multifd_send_state) {
         return;
     }
     if (multifd_send_state->pages->used) {
@@ -1076,6 +1076,7 @@ out:
 static void multifd_new_send_channel_async(QIOTask *task, gpointer opaque)
 {
     MultiFDSendParams *p = opaque;
+    MigrationState *s = migrate_get_current();
     QIOChannel *sioc = QIO_CHANNEL(qio_task_get_source(task));
     Error *local_err = NULL;
 
@@ -1084,8 +1085,10 @@ static void multifd_new_send_channel_async(QIOTask *task, gpointer opaque)
     }
 
     if (qio_task_propagate_error(task, &local_err)) {
-        multifd_save_cleanup();
+        migrate_set_state(&s->state, s->state, MIGRATION_STATUS_FAILED);
         migrate_set_error(migrate_get_current(), local_err);
+        multifd_save_cleanup();
+        //migrate_fd_cleanup();
     } else {
         p->c = QIO_CHANNEL(sioc);
         qio_channel_set_delay(p->c, false);
@@ -1094,8 +1097,10 @@ static void multifd_new_send_channel_async(QIOTask *task, gpointer opaque)
                                 QEMU_THREAD_JOINABLE, &local_err)) {
             error_reportf_err(local_err,
                               "failed to create multifd_send_thread: ");
-            multifd_save_cleanup();
+            migrate_set_state(&s->state, s->state, MIGRATION_STATUS_FAILED);
             migrate_set_error(migrate_get_current(), local_err);
+            multifd_save_cleanup();
+            //migrate_fd_cleanup();
             return;
         }
 
