@@ -513,10 +513,12 @@ bool qemu_thread_create(QemuThread *thread, const char *name,
     int err;
     pthread_attr_t attr;
     QemuThreadArgs *qemu_thread_args;
-
+static int ct = 0;
     err = pthread_attr_init(&attr);
+if (ct == 20) {err=EPERM;}
     if (err) {
         error_setg(errp, "pthread_attr_init failed: %s", strerror(err));
+ct++;
         return false;
     }
 
@@ -541,7 +543,7 @@ bool qemu_thread_create(QemuThread *thread, const char *name,
         g_free(qemu_thread_args);
         return false;
     }
-
+ct++;
     pthread_sigmask(SIG_SETMASK, &oldset, NULL);
 
     pthread_attr_destroy(&attr);

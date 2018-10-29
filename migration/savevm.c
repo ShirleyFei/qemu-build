@@ -1019,6 +1019,9 @@ void qemu_savevm_state_setup(QEMUFile *f)
     SaveStateEntry *se;
     int ret;
 
+if (!f) {
+    return;
+}
     trace_savevm_state_setup();
     QTAILQ_FOREACH(se, &savevm_state.handlers, entry) {
         if (!se->ops || !se->ops->save_setup) {
