@@ -148,6 +148,7 @@ static void iothread_complete(UserCreatable *obj, Error **errp)
     Error *local_error = NULL;
     IOThread *iothread = IOTHREAD(obj);
     char *name, *thread_name;
+    int thread_ok;
 
     iothread->stopping = false;
     iothread->running = true;
@@ -164,9 +165,7 @@ static void iothread_complete(UserCreatable *obj, Error **errp)
                                 &local_error);
     if (local_error) {
         error_propagate(errp, local_error);
-        aio_context_unref(iothread->ctx);
-        iothread->ctx = NULL;
-        return;
+        goto fail;
     }
 
     qemu_mutex_init(&iothread->init_done_lock);
@@ -178,11 +177,15 @@ static void iothread_complete(UserCreatable *obj, Error **errp)
      */
     name = object_get_canonical_path_component(OBJECT(obj));
     thread_name = g_strdup_printf("IO %s", name);
-    /* TODO: let the further caller handle the error instead of abort() here */
-    qemu_thread_create(&iothread->thread, thread_name, iothread_run,
-                       iothread, QEMU_THREAD_JOINABLE, &error_abort);
+    thread_ok = qemu_thread_create(&iothread->thread, thread_name, iothread_run,
+                                   iothread, QEMU_THREAD_JOINABLE, errp);
     g_free(thread_name);
     g_free(name);
+    if (thread_ok < 0) {
+        qemu_cond_destroy(&iothread->init_done_cond);
+        qemu_mutex_destroy(&iothread->init_done_lock);
+        goto fail;
+    }
 
     /* Wait for initialization to complete */
     qemu_mutex_lock(&iothread->init_done_lock);
@@ -191,6 +194,10 @@ static void iothread_complete(UserCreatable *obj, Error **errp)
                        &iothread->init_done_lock);
     }
     qemu_mutex_unlock(&iothread->init_done_lock);
+    return;
+fail:
+    aio_context_unref(iothread->ctx);
+    iothread->ctx = NULL;
 }
 
 typedef struct {
